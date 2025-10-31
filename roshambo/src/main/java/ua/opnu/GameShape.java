@@ -1,9 +1,5 @@
 package ua.opnu;
 
-public class GameShape {
-
-    @Override
-    public String toString() {
-        return "Game shape";
-    }
+public abstract class GameShape {
+    public abstract String getName();
 }

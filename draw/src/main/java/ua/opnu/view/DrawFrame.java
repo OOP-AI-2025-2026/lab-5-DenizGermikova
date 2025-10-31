@@ -1,108 +1,103 @@
 package ua.opnu.view;
 
-import ua.opnu.model.DrawShape;
-
-import java.awt.*;
+import ua.opnu.model.Circle;
+import ua.opnu.model.Ellipse;
+import ua.opnu.model.Rectangle;
+import ua.opnu.model.Shape;
 
 import javax.swing.*;
-import javax.swing.border.LineBorder;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.BorderLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * Головне вікно програми. Фрейм (клас JFrame) є контейнером верхнього рівня
- */
 public class DrawFrame extends JFrame {
 
-    // Область для малювання фігур
-    private PaintSurface surface;
+    private enum ShapeType { CIRCLE, RECTANGLE, ELLIPSE }
 
-    // У конструкторі створюємо GUI
-    public DrawFrame(String title) {
+    private ShapeType currentShape = ShapeType.CIRCLE;
+    private final List<Shape> shapes = new ArrayList<>();
+    private int startX, startY, endX, endY;
 
-        // Зверніть увагу, що ми викликаємо
-        // Конструктор базового класу. Усередині нього
-        // виконується вся робота з промальовування вікна
-        // Нам залишається лише використовувати код суперкласу
-        super(title);
+    public DrawFrame() {
+        setTitle("Draw App");
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        // Кажемо фрейму, що при закритті вікна програма завершує роботу
-        // (якщо це не вказати, то програма "висітиме" у процесах
-        // після того, як ви закриєте вікно додатку
-        this.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        // Верхня панель з кнопками
+        JPanel topPanel = new JPanel();
+        BigTextButton circleBtn = new BigTextButton("Circle");
+        BigTextButton rectBtn = new BigTextButton("Rectangle");
+        BigTextButton ellipseBtn = new BigTextButton("Ellipse");
+        BigTextButton clearBtn = new BigTextButton("Clear");
 
-        // Встановлюємо менеджер розмітки
-        // (він відповідає за те - як будуть розташовуватися
-        // елементи всередині фрейму)
-        this.setLayout(new BorderLayout());
+        topPanel.add(circleBtn);
+        topPanel.add(rectBtn);
+        topPanel.add(ellipseBtn);
+        topPanel.add(clearBtn);
 
-        // Додаємо верхню панель із трьома кнопками
-        this.add(setButtonPanel(), BorderLayout.NORTH);
+        add(topPanel, BorderLayout.NORTH);
 
-        // Створюємо об'єкт області малювання
-        surface = new PaintSurface();
+        DrawingPanel drawingPanel = new DrawingPanel();
+        add(drawingPanel, BorderLayout.CENTER);
 
-        // Додаємо область для малювання фігур у фрейм
-        this.add(surface, BorderLayout.CENTER);
-
-        // Цей метод змінює розмір кадру так
-        // щоб було видно всі елементи всередині нього
-        this.pack();
-
-        // "Показує" фрейм на екрані (встановлюємо видимість фрейму)
-        this.setVisible(true);
+        // Обробники подій кнопок
+        circleBtn.addActionListener(e -> currentShape = ShapeType.CIRCLE);
+        rectBtn.addActionListener(e -> currentShape = ShapeType.RECTANGLE);
+        ellipseBtn.addActionListener(e -> currentShape = ShapeType.ELLIPSE);
+        clearBtn.addActionListener(e -> {
+            shapes.clear();
+            drawingPanel.repaint();
+        });
     }
 
-    /*
-     * Даний метод створює та налаштовує
-     * верхню панель із кнопками.
-     */
-    private JPanel setButtonPanel() {
+    // Внутрішній клас для панелі малювання
+    private class DrawingPanel extends JPanel {
 
-        // Створюємо панель для кнопок
-        JPanel buttonPanel = new JPanel(true);
+        public DrawingPanel() {
+            setBackground(Color.WHITE);
 
-        // Повідомляємо панелі, що елементи всередині нього
-        // повинні йти один за одним зліва направо з вирівнюванням по центру
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
-        // Колір фону панелі
-        buttonPanel.setBackground(Color.CYAN);
-        // Границя панелі (чорна окантовка навколо панелі)
-        buttonPanel.setBorder(new LineBorder(Color.BLACK, 2));
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    startX = e.getX();
+                    startY = e.getY();
+                }
 
-        // *** Додаємо кнопки на панель ***
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    endX = e.getX();
+                    endY = e.getY();
 
-        // 1. Кнопка для прямокутника
-        BigTextButton rect = new BigTextButton("Rectangle");
+                    int width = Math.abs(endX - startX);
+                    int height = Math.abs(endY - startY);
+                    int x = Math.min(startX, endX);
+                    int y = Math.min(startY, endY);
 
-        // Це т.зв. слухач (Listener). Слухач - об'єкт деякого
-        // класу, який містить у собі певний метод.
-        // Цей об'єкт передається кнопці і коли настає певна
-        // подія, пов'язана з цією кнопкою (наприклад, ми натиснули на цю кнопку),
-        // кнопка бере цей слухач і викликає його метод.
-        // Таким чином ми можемо прописати той код, який буде
-        // виконуватися при настанні певних подій (наприклад, натискання на кнопку)
-        // Цей метод буде виконано, коли користувач натисне на кнопку
-        rect.addActionListener(e -> {
-            // Змінюємо поле всередині об'єкта області малювання,
-            // щоб він знав, що тепер потрібно малювати прямокутники
-            surface.setShapeType(DrawShape.SHAPE_RECTANGLE);
-        });
-        // додаємо першу кнопку на верхню панель
-        buttonPanel.add(rect);
+                    Shape shape;
 
-        // 2. Кнопка для закругленого прямокутника
-        BigTextButton rounded_rect = new BigTextButton("Rounded rect.");
-        rounded_rect.addActionListener(e -> {
-            // Кажемо області малювання, що тепер потрібно
-            // малювати закруглені прямокутники
-            surface.setShapeType(DrawShape.SHAPE_ROUNDED_RECT);
-        });
-        // Додаємо другу кнопку на верхню панель
-        buttonPanel.add(rounded_rect);
+                    switch (currentShape) {
+                        case RECTANGLE -> shape = new Rectangle(x, y, width, height, Color.BLUE);
+                        case ELLIPSE -> shape = new Ellipse(x, y, width, height, Color.MAGENTA);
+                        default -> shape = new Circle(x, y, width, height, Color.RED);
+                    }
 
-        // TODO: додати кнопку для еліпса за аналогією з іншими кнопками
-        // TODO: для додаткових балів додати кнопку "Clear" для очищення всіх фігур
+                    shapes.add(shape);
+                    repaint();
+                }
+            });
+        }
 
-        return buttonPanel;
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            for (Shape s : shapes) {
+                s.draw(g);
+            }
+        }
     }
 }
-
